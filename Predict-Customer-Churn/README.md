@@ -1,4 +1,5 @@
 # Predict Customer Churn with Clean Code
+A Udacity Machine Learning DevOps Nanodegree Program project.
 ## Description
 This project seeks to identify credit card customers that are most likely to churn (leave/stop using the credit card). 
 ## Objective
