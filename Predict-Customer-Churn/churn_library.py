@@ -342,7 +342,7 @@ def train_models(X_train, X_test, y_train, y_test):
 
     # Compute and feature importance
     feature_importance_plot(model=cv_rfc,
-                            features=X_test,
+                            X_data=X_test,
                             output_pth='./images/results/')
 
 
