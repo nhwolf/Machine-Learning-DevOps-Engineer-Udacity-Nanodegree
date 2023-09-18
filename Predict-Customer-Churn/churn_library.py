@@ -36,11 +36,14 @@ def import_data(pth):
     output:
             df: pandas dataframe
     '''
-    df = pd.read_csv(pth)
-
+    
+    df =  pd.read_csv(pth)   
+    
     df['Churn'] = df['Attrition_Flag'].apply(
-        lambda val: 0 if val == "Existing Customer" else 1)
-
+        lambda val: 0 if val=="Existing Customer" else 1)
+    
+    df['Churn'] = pd.to_numeric(df['Churn'])
+    
     return df
 
 
@@ -54,18 +57,22 @@ def perform_eda(df):
     output:
             None
     '''
+
+    # Copy DataFrame
+    eda_df = df
+    
     # Churn Histogram
     plt.figure(figsize=(20, 10))
-    df['Churn'].hist()
+    eda_df['Churn'].hist()
     plt.savefig(constants.EDA_CHURN_HIST_PATH)
 
     # Customer Age Histogram
-    df['Customer_Age'].hist()
+    eda_df['Customer_Age'].hist()
     plt.savefig(constants.EDA_CUST_AGE_HIST_PATH)
 
     # Marital Status Histogram
     plt.figure(figsize=(20, 10))
-    df.Marital_Status.value_counts('normalize').plot(kind='bar')
+    eda_df.Marital_Status.value_counts('normalize').plot(kind='bar')
     plt.savefig(constants.EDA_MARITAL_STATUS_HIST_PATH)
 
     # Total Transaction Distribution Histogram
@@ -74,12 +81,14 @@ def perform_eda(df):
     plt.savefig(constants.EDA_DIST_PLOT_PATH)
 
     # Heatmap
+    # Heatmap (excluding categorical columns)
+    numerical_df = eda_df.select_dtypes(include=['number'])  #only numerical columns
     plt.figure(figsize=(20, 10))
-    sns.heatmap(df.corr(), annot=False, cmap='Dark2_r', linewidths=2)
+    sns.heatmap(numerical_df.corr(), annot=False, cmap='Dark2_r', linewidths=2)
     plt.savefig(constants.EDA_HEATMAP_PATH)
 
 
-def encoder_helper(df, category_lst, response=None):
+def encoder_helper(df, category_lst, response):
     '''
     helper function to turn each categorical column into a new column with
     propotion of churn for each category - associated with cell 15 from the notebook
@@ -93,17 +102,22 @@ def encoder_helper(df, category_lst, response=None):
     output:
             df: pandas dataframe with new columns
     '''
+    # Copy DataFrmae
+    encoder_df = df
 
     for category in category_lst:
-        # calculate the group means for 'Churn' within each category
-        group_means = df.groupby(category)['Churn'].transform('mean')
+        column_lst = []
+        column_groups = df.groupby(category).mean()['Churn']
 
-        if response:  # checking if 'response' is specified
-            df[category + '_' + response] = group_means
-        else:  # response is not specified
-            df[category] = group_means
+        for val in df[category]:
+            column_lst.append(column_groups.loc[val])
 
-    return df
+        if response:
+            encoder_df[category + '_' + response] = column_lst
+        else:
+            encoder_df[category] = column_lst
+
+    return encoder_df
 
 
 def perform_feature_engineering(df, response=None):
@@ -119,6 +133,7 @@ def perform_feature_engineering(df, response=None):
               y_train: y training data
               y_test: y testing data
     '''
+
     # Categorical features
     cat_columns = [
         'Gender',
@@ -160,7 +175,7 @@ def perform_feature_engineering(df, response=None):
         'Marital_Status_Churn',
         'Income_Category_Churn',
         'Card_Category_Churn']
-    X[keep_cols] = df[keep_cols]
+    X[keep_cols] = encoded_df[keep_cols]
 
     # Splitting into train and test data
     X_train, X_test, y_train, y_test = train_test_split(
@@ -371,10 +386,11 @@ def main():
     df = import_data(constants.DATA_PTH)
 
     # Perform EDA
-    df_eda = perform_eda(df)
+    eda_df = perform_eda(df)
 
     # Feature Engineering
-    X_train, X_test, y_train, y_test = perform_feature_engineering(df_eda)
+    X_train, X_test, y_train, y_test = perform_feature_engineering(
+        df=eda_df,response='Churn')
 
     # Model training
     train_models(X_train, X_test, y_train, y_test)
