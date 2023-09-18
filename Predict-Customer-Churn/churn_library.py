@@ -3,12 +3,13 @@ churn_library.py is a library of functions to find customers who are likely to c
 
 Author: Nicholas Wolf
 
-Last Modified: September 16, 2024
+Last Modified: September 17, 2023
 '''
 
 
 # import libraries
-from sklearn.metrics import plot_roc_curve, classification_report
+#from sklearn.metrics import RocCurveDisplay, classification_report
+from sklearn.metrics import classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -22,6 +23,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 sns.set()
+import constants
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 
 
@@ -55,26 +57,26 @@ def perform_eda(df):
     # Churn Histogram
     plt.figure(figsize=(20, 10))
     df['Churn'].hist()
-    plt.savefig('./images/eda/churn_hist.png')
+    plt.savefig(constants.EDA_CHURN_HIST_PATH)
 
     # Customer Age Histogram
     df['Customer_Age'].hist()
-    plt.savefig('./images/eda/customer_age_hist.png')
+    plt.savefig(constants.EDA_CUST_AGE_HIST_PATH)
 
     # Marital Status Histogram
     plt.figure(figsize=(20, 10))
     df.Marital_Status.value_counts('normalize').plot(kind='bar')
-    plt.savefig('./images/eda/marital_status_hist.png')
+    plt.savefig(constants.EDA_MARITAL_STATUS_HIST_PATH)
 
     # Total Transaction Distribution Histogram
     plt.figure(figsize=(20, 10))
     sns.histplot(df['Total_Trans_Ct'], stat='density', kde=True)
-    plt.savefig('./images/eda/dist_plot.png')
+    plt.savefig(constants.EDA_DIST_PLOT_PATH)
 
     # Heatmap
     plt.figure(figsize=(20, 10))
     sns.heatmap(df.corr(), annot=False, cmap='Dark2_r', linewidths=2)
-    plt.savefig(fname='./images/eda/heatmap.png')
+    plt.savefig(constants.EDA_HEATMAP_PATH)
 
 
 def encoder_helper(df, category_lst, response=None):
@@ -202,7 +204,7 @@ def classification_report_image(y_train,
              str(classification_report(y_train, y_train_preds_rf)),
              {'fontsize': 10}, fontproperties='monospace')
     plt.axis('off')
-    plt.savefig(fname='./images/results/random_forest_results.png')
+    plt.savefig(constants.RESULTS_RANDOM_FOREST_PATH)
 
     # Logistic Regression
     plt.rc('figure', figsize=(5, 5))
@@ -219,7 +221,7 @@ def classification_report_image(y_train,
              str(classification_report(y_test, y_test_preds_lr)),
              {'fontsize': 10}, fontproperties='monospace')
     plt.axis('off')
-    plt.savefig(fname='./images/results/logistic_results.png')
+    plt.savefig(constants.RESULTS_LOGISTIC_REGRESSION_PATH)
 
 
 def feature_importance_plot(model, X_data, output_pth):
@@ -306,8 +308,8 @@ def train_models(X_train, X_test, y_train, y_test):
     lrc.fit(X_train, y_train)
 
     # Save best models
-    joblib.dump(cv_rfc.best_estimator_, './models/rfc_model.pkl')
-    joblib.dump(lrc, './models/logistic_model.pkl')
+    joblib.dump(cv_rfc.best_estimator_, constants.MODELS_RFC_PATH)
+    joblib.dump(lrc, constants.MODELS_LOGISTIC_PATH)
 
     # Compute train and test predictions for RandomForestClassifier
     y_train_preds_rf = cv_rfc.best_estimator_.predict(X_train)
@@ -318,16 +320,18 @@ def train_models(X_train, X_test, y_train, y_test):
     y_test_preds_lr = lrc.predict(X_test)
 
     # Compute ROC curve
-    plt.figure(figsize=(15, 8))
-    axis = plt.gca()
-    lrc_plot = plot_roc_curve(lrc, X_test, y_test, ax=axis, alpha=0.8)
-    rfc_disp = plot_roc_curve(
-        cv_rfc.best_estimator_,
-        X_test,
-        y_test,
-        ax=axis,
-        alpha=0.8)
-    plt.savefig(fname='./images/results/roc_curve_result.png')
+    # plot_roc_curve was removed from scikit-learn in v1.2
+    # Need to fix by using sklearn.metrics.RocCurveDisplay
+    # plt.figure(figsize=(15, 8))
+    # axis = plt.gca()
+    # lrc_plot = plot_roc_curve(lrc, X_test, y_test, ax=axis, alpha=0.8)
+    # rfc_disp = plot_roc_curve(
+    # cv_rfc.best_estimator_,
+    # X_test,
+    # y_test,
+    # ax=axis,
+    # alpha=0.8)
+    # plt.savefig(fname='./images/results/roc_curve_result.png')
 
     # Compute and results
     classification_report_image(y_train, y_test,
@@ -338,7 +342,7 @@ def train_models(X_train, X_test, y_train, y_test):
     shap_explainer_plot(
         cv_rfc.best_estimator_,
         X_test,
-        './images/results/rf_shap_values_summary.png')
+        constants.RESULTS_SHAP_EXPLAINER_PATH)
 
     # Compute and feature importance
     feature_importance_plot(model=cv_rfc,
@@ -347,8 +351,24 @@ def train_models(X_train, X_test, y_train, y_test):
 
 
 def main():
+    '''
+    Main function for the churn_library pipeline.
+
+    This function performs the following steps:
+    1. Imports data from the './data/bank_data.csv' file using the 'import_data' function.
+    2. Conducts Exploratory Data Analysis (EDA) using the 'perform_eda' function.
+    3. Performs feature engineering on the EDA results using the 
+       'perform_feature_engineering' function.
+    4. Trains machine learning models using the 'train_models' function.
+    
+    input:
+              None
+
+    output:
+              None
+    '''
     # Importing data
-    df = import_data('./data/bank_data.csv')
+    df = import_data(constants.DATA_PTH)
 
     # Perform EDA
     df_eda = perform_eda(df)
